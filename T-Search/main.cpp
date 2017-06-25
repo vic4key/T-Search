@@ -2,12 +2,19 @@
 //
 
 #include "stdafx.h"
-
-#include <CatEngine.h>
-#pragma comment(lib, "CatEngine.lib")
+#include <Windows.h>
+#include "TSearch.h"
 
 int _tmain(int argc, _TCHAR* argv[])
 {
-  ce::ceBox(ce::ceGetConsoleWindow(), _T("T-Search"));
+  #ifdef _M_IX86
+    typedef TSP32 TSPDT;
+  #else  // _M_AMD64
+    typedef TSP64 TSPDT;
+  #endif // _M_IX86
+  CTSearch<TSPDT> TSP;
+  TSP.SetParameters((TSPDT)GetModuleHandle(NULL), 10*4*1024 + 512);
+  TSP.Search();
+
   return 0;
 }
