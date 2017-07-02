@@ -1,12 +1,11 @@
 #include "TSearch.h"
 
-#include <iostream>
-#include <sstream>
-#include <iomanip>
-#include <thread>
-
 #include <CatEngine.h>
 #pragma comment(lib, "CatEngine.lib")
+
+#include <iomanip>
+#include <thread>
+#include <cctype>
 
 template <typename T>
 struct TDivison
@@ -71,35 +70,22 @@ void CTSearch<T>::ThreadBody(std::shared_ptr<TThreadData> pData)
     std::lock_guard<std::mutex> LG(*(pData->pMutex));
   }
 
-  std::stringstream ss;
+  ce::ceMsgA("T[%04X] : Running <%p : %08X>", std::this_thread::get_id(), (void*)pData->Address, pData->Size);
 
-  ss.clear();
-  ss.str("");
-  ss << "T["
-    << std::hex << std::setw(4) << std::setfill('0') << std::uppercase
-    << std::this_thread::get_id()
-    << "] : Running <"
-    << (void*)pData->Address
-    << " : " << pData->Size
-    << ">";
-  ce::ceMsgA(ss.str());
+  std::string pattern("");
+  for (auto e : pData->Pattern) pattern += ce::ceFormatA("<%d : %02X>, ", e.first, e.second);
+  ce::ceMsgA(pattern);
 
   Sleep(500);
 
-  ss.clear();
-  ss.str("");
-  ss << "T["
-    << std::hex << std::setw(4) << std::setfill('0') << std::uppercase
-    << std::this_thread::get_id()
-    << "] : Completed";
-  ce::ceMsgA(ss.str());
+  ce::ceMsgA("T[%04X] : Completed", std::this_thread::get_id());
 }
 
 template <typename T>
 void CTSearch<T>::ExecThreadGroup(
   const std::function<void(std::shared_ptr<TThreadData> pData)> fnThreadBody,
   const TThreadGroupConfig* pTGC
-  )
+)
 {
   ce::ceMsgA(CE_FUNCTION_NAME);
 
@@ -115,6 +101,7 @@ void CTSearch<T>::ExecThreadGroup(
     threadData.reset(new TThreadData);
 
     threadData->pMutex  = pTGC->pMutex;
+    threadData->Pattern = pTGC->Pattern;
     threadData->Address = pTGC->Address + i * m_PageSize;
     threadData->Size    = m_PageSize;
     if (threadData->Address - m_Base + threadData->Size > m_DataSize)
@@ -132,11 +119,14 @@ void CTSearch<T>::ExecThreadGroup(
 }
 
 template <typename T>
-void CTSearch<T>::Search()
+bool CTSearch<T>::Search(const std::string& pattern)
 {
   ce::ceMsgA(CE_FUNCTION_NAME);
 
-  if (m_AvaThread == 0 || (m_Base == 0 || m_DataSize == 0)) return;
+  if (m_AvaThread == 0 || (m_Base == 0 || m_DataSize == 0)) return false;
+
+  auto cPattern = this->ToPattern(pattern);
+  if (cPattern.empty()) return false;
 
   const auto grPage = DivT<T>(m_DataSize, m_PageSize);
   auto nGrPage = grPage.quotient + (grPage.remainder == 0 ? 0 : 1);
@@ -152,7 +142,48 @@ void CTSearch<T>::Search()
     if (i == grThread.quotient && (nThread = grThread.remainder) == 0) break;
 
     args.NumberOfThread = nThread;
+    args.Pattern = cPattern;
     args.Address = m_Base + i * m_AvaThread * m_PageSize;
     this->ExecThreadGroup(CTSearch<T>::ThreadBody, &args);
   }
+
+  return true;
+}
+
+template <typename T>
+void CTSearch<T>::SearchPattern(const std::string& pattern)
+{
+  auto s = pattern;
+  s = ce::ceTrimStringA(s);
+  if (!s.empty()) this->Search(s);
+}
+
+template <typename T>
+void CTSearch<T>::SearchPattern(const std::wstring& pattern)
+{
+  auto s = ce::ceToStringA(pattern);
+  s = ce::ceTrimStringA(s);
+  if (!s.empty()) this->Search(s);
+}
+
+template <typename T>
+const TPattern CTSearch<T>::ToPattern(const std::string& pattern)
+{
+  TPattern M;
+
+  auto l = ce::ceSplitStringA(pattern, " ");
+  for (auto& e: l)
+  {
+    if (e.length() == 2 && isxdigit(e[0]) && isxdigit(e[1]))
+    {
+      auto v = (ce::uchar)strtoul(e.c_str(), nullptr, 16);
+      M.push_back(std::make_pair(true, v));
+    }
+    else
+    {
+      M.push_back(std::make_pair(false, 0x00));
+    }
+  }
+
+  return M;
 }

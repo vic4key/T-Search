@@ -2,11 +2,15 @@
 
 #include <mutex>
 #include <memory>
+#include <vector>
+#include <utility>
 
 #pragma warning(disable: 4661) /* No suitable definition provided for explicit template instantiation request. */
 
 typedef __int32 TSP32;
 typedef __int64 TSP64;
+
+typedef std::vector<std::pair<bool, unsigned char>> TPattern;
 
 template <typename T>
 class CTSearch
@@ -26,6 +30,7 @@ private:
     std::mutex* pMutex;
     T NumberOfThread;
     T Address;
+    TPattern Pattern;
     _THREAD_GROUP_CONFIG() : pMutex(nullptr), NumberOfThread(0), Address(0) {}
   } TThreadGroupConfig;
 
@@ -34,6 +39,7 @@ private:
     std::mutex* pMutex;
     T Address;
     T Size;
+    TPattern Pattern;
     _THREAD_DATA() : pMutex(nullptr), Address(0), Size(0) {}
   } TThreadData;
 
@@ -42,7 +48,10 @@ private:
   void ExecThreadGroup(
     const std::function<void(std::shared_ptr<TThreadData> pData)> fnThreadBody,
     const TThreadGroupConfig* pTGC
-    );
+  );
+
+  bool Search(const std::string& pattern);
+  const TPattern ToPattern(const std::string& pattern);
 
 public:
   typedef enum _DEFAULT
@@ -69,7 +78,8 @@ public:
     const T PageSize  = CTSearch::DEFAULT::PAGE_SIZE   // 4 KiB for one thread.
     );
 
-  void Search();
+  void SearchPattern(const std::string&  pattern = "");
+  void SearchPattern(const std::wstring& pattern = L"");
 };
 
 template class CTSearch<TSP32>;
