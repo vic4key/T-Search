@@ -7,9 +7,10 @@
 
 #pragma warning(disable: 4661) /* No suitable definition provided for explicit template instantiation request. */
 
-typedef __int32 TSP32;
-typedef __int64 TSP64;
+typedef unsigned __int32 TSP32;
+typedef unsigned __int64 TSP64;
 
+typedef std::pair<bool, std::ptrdiff_t> TResult;
 typedef std::vector<std::pair<bool, unsigned char>> TPattern;
 
 template <typename T>
@@ -24,6 +25,8 @@ private:
   T m_nThread;
 
   std::mutex m_Mutex;
+
+  static TResult Result;
 
   typedef struct _THREAD_GROUP_CONFIG
   {
@@ -50,7 +53,10 @@ private:
     const TThreadGroupConfig* pTGC
   );
 
+  static TResult Searcher(const T Address, const T Size, const TPattern& pattern);
+
   bool Search(const std::string& pattern);
+
   const TPattern ToPattern(const std::string& pattern);
 
 public:
@@ -78,8 +84,8 @@ public:
     const T PageSize  = CTSearch::DEFAULT::PAGE_SIZE   // 4 KiB for one thread.
     );
 
-  void SearchPattern(const std::string&  pattern = "");
-  void SearchPattern(const std::wstring& pattern = L"");
+  const TResult SearchPattern(const std::string&  pattern = "");
+  const TResult SearchPattern(const std::wstring& pattern = L"");
 };
 
 template class CTSearch<TSP32>;
