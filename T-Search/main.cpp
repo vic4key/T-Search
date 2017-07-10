@@ -2,8 +2,8 @@
 //
 
 #include "stdafx.h"
-#include <Windows.h>
 #include "TSearch.h"
+#include <Windows.h>
 #include <iostream>
 
 int _tmain(int argc, _TCHAR* argv[])
@@ -12,7 +12,8 @@ int _tmain(int argc, _TCHAR* argv[])
     typedef TSP32 TSPDT;
   #else  // _M_AMD64
     typedef TSP64 TSPDT;
-  #endif // _M_IX86
+  #endif // _M_IX86  /* Note :   * If you are working on another process.   * For performance, you should copy that memory to the current process memory   * and do searching on it.   */
+
   CTSearch<TSPDT> TSP;
   TSP.SetParameters(TSPDT(GetModuleHandle(_T("kernel32.dll"))), 10*4*1024 + 512);
 

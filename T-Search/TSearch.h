@@ -7,6 +7,8 @@
 
 #pragma warning(disable: 4661) /* No suitable definition provided for explicit template instantiation request. */
 
+struct _EXCEPTION_POINTERS;
+
 typedef unsigned __int32 TSP32;
 typedef unsigned __int64 TSP64;
 
@@ -59,11 +61,13 @@ private:
 
   const TPattern ToPattern(const std::string& pattern);
 
+  static unsigned long ExceptionHandler(_EXCEPTION_POINTERS* pExceptionInformation);
+
 public:
   typedef enum _DEFAULT
   {
-    AVA_THREAD = 4,      // 4 threads
-    PAGE_SIZE  = 4*1024, // 4 KiB
+    MAX_NTHREAD = -1,     // Maximum number of concurrent threads.
+    PAGE_SIZE   = 4*1024, // 4 KiB per one thread.
   } DEFAULT;
 
   CTSearch();
@@ -71,8 +75,8 @@ public:
   CTSearch(
     const T Base,
     const T DataSize,
-    const T AvaThread = CTSearch::DEFAULT::AVA_THREAD, // 4 threads for searching.
-    const T PageSize  = CTSearch::DEFAULT::PAGE_SIZE   // 4 KiB for one thread.
+    const T AvaThread = CTSearch::DEFAULT::MAX_NTHREAD,
+    const T PageSize  = CTSearch::DEFAULT::PAGE_SIZE
     );
 
   virtual ~CTSearch();
@@ -80,12 +84,12 @@ public:
   void SetParameters(
     const T Base,
     const T DataSize,
-    const T AvaThread = CTSearch::DEFAULT::AVA_THREAD, // 4 threads for searching.
-    const T PageSize  = CTSearch::DEFAULT::PAGE_SIZE   // 4 KiB for one thread.
+    const T AvaThread = CTSearch::DEFAULT::MAX_NTHREAD,
+    const T PageSize  = CTSearch::DEFAULT::PAGE_SIZE
     );
 
-  const TResult SearchPattern(const std::string&  pattern = "");
-  const TResult SearchPattern(const std::wstring& pattern = L"");
+  const TResult SearchPattern(const std::string&  pattern);
+  const TResult SearchPattern(const std::wstring& pattern);
 };
 
 template class CTSearch<TSP32>;

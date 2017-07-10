@@ -35,8 +35,8 @@ CTSearch<T>::CTSearch()
   ce::ceMsgA(CE_FUNCTION_NAME);
   m_Base = 0;
   m_DataSize  = 0;
-  m_PageSize  = DEFAULT::PAGE_SIZE;  // 4 threads for searching.
-  m_AvaThread = DEFAULT::AVA_THREAD; // 4 KiB for one thread
+  m_PageSize  = DEFAULT::PAGE_SIZE;
+  m_AvaThread = DEFAULT::MAX_NTHREAD;
 }
 
 template <typename T>
@@ -61,12 +61,15 @@ void CTSearch<T>::SetParameters(const T Base, const T DataSize, const T AvaThrea
   ce::ceMsgA(CE_FUNCTION_NAME);
 
   T nMaxThreads = std::thread::hardware_concurrency();
-  if (nMaxThreads == 0) nMaxThreads = AvaThread;
+  if (nMaxThreads == 0) nMaxThreads = 1;
+
+  auto nThread = (AvaThread == DEFAULT::MAX_NTHREAD ? nMaxThreads : AvaThread);
+  nThread = (nThread >= nMaxThreads ? nMaxThreads : nThread);
 
   m_Base = Base;
   m_DataSize = DataSize;
   m_PageSize = PageSize;
-  m_AvaThread = (AvaThread > nMaxThreads ? nMaxThreads : AvaThread);
+  m_AvaThread = nThread;
 
   CTSearch<T>::Result = std::make_pair(false, 0);
 }
@@ -77,30 +80,49 @@ ce::uchar ReadByte(void* Address)
 }
 
 template <typename T>
+unsigned long CTSearch<T>::ExceptionHandler(_EXCEPTION_POINTERS* pExceptionInformation)
+{
+  // ce::ceMsgA(CE_FUNCTION_NAME);
+
+  PEXCEPTION_RECORD pER = pExceptionInformation->ExceptionRecord;
+
+  // Exception Handler
+
+  return EXCEPTION_EXECUTE_HANDLER;
+}
+
+template <typename T>
 TResult CTSearch<T>::Searcher(const T Address, const T Size, const TPattern& pattern)
 {
   TResult result = std::make_pair(false, 0);
 
-  T cout = 0;
-  auto z = pattern.size();
-  for (T i = 0; i < Size - z; i++)
+  __try
   {
-    cout = 0;
-    for (ce::uint j = 0; j < z; j++)
+    T cout = 0;
+    auto z = pattern.size();
+    for (T i = 0; i < Size - z; i++)
     {
-      auto e = pattern.at(j);
-      if (e.first)
+      cout = 0;
+      for (ce::uint j = 0; j < z; j++)
       {
-        if (ReadByte((void*)(Address + i + j)) == e.second) cout++;
-        else break;
+        auto e = pattern.at(j);
+        if (e.first)
+        {
+          if (ReadByte((void*)(Address + i + j)) == e.second) cout++;
+          else break;
+        }
+        else cout++;
       }
-      else cout++;
+      if (cout == z)
+      {
+        result = std::make_pair(true, std::ptrdiff_t(Address + i));
+        break;
+      }
     }
-    if (cout == z)
-    {
-      result = std::make_pair(true, std::ptrdiff_t(Address + i));
-      break;
-    }
+  }
+  __except(CTSearch<T>::ExceptionHandler(GetExceptionInformation()))
+  {
+    // Exception
   }
 
   return result;
