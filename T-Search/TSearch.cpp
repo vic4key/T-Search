@@ -1,7 +1,6 @@
 #include "TSearch.h"
 
-#include <CatEngine.h>
-#pragma comment(lib, "CatEngine.lib")
+#include <vu>
 
 #include <iomanip>
 #include <thread>
@@ -32,7 +31,7 @@ TDivison<T> DivT(const T Dividend, const T Divisor)
 template <typename T>
 CTSearch<T>::CTSearch()
 {
-  ce::ceMsgA(CE_FUNCTION_NAME);
+  vu::MsgA(VU_FUNC_NAME);
   m_Base = 0;
   m_DataSize  = 0;
   m_PageSize  = DEFAULT::PAGE_SIZE;
@@ -42,7 +41,7 @@ CTSearch<T>::CTSearch()
 template <typename T>
 CTSearch<T>::CTSearch(const T Base, const T DataSize, const T AvaThread, const T PageSize)
 {
-  ce::ceMsgA(CE_FUNCTION_NAME);
+  vu::MsgA(VU_FUNC_NAME);
   m_Base = Base;
   m_DataSize = DataSize;
   m_PageSize = PageSize;
@@ -52,13 +51,13 @@ CTSearch<T>::CTSearch(const T Base, const T DataSize, const T AvaThread, const T
 template <typename T>
 CTSearch<T>::~CTSearch()
 {
-  ce::ceMsgA(CE_FUNCTION_NAME);
+  vu::MsgA(VU_FUNC_NAME);
 }
 
 template <typename T>
 void CTSearch<T>::SetParameters(const T Base, const T DataSize, const T AvaThread, const T PageSize)
 {
-  ce::ceMsgA(CE_FUNCTION_NAME);
+  vu::MsgA(VU_FUNC_NAME);
 
   T nMaxThreads = std::thread::hardware_concurrency();
   if (nMaxThreads == 0) nMaxThreads = 1;
@@ -74,19 +73,14 @@ void CTSearch<T>::SetParameters(const T Base, const T DataSize, const T AvaThrea
   CTSearch<T>::Result = std::make_pair(false, 0);
 }
 
-ce::uchar ReadByte(void* Address)
+vu::uchar ReadByte(void* Address)
 {
-  return *(ce::uchar*)Address;
+  return *(vu::uchar*)Address;
 }
 
 template <typename T>
 unsigned long CTSearch<T>::ExceptionHandler(_EXCEPTION_POINTERS* pExceptionInformation)
 {
-  // ce::ceMsgA(CE_FUNCTION_NAME);
-
-  PEXCEPTION_RECORD pER = pExceptionInformation->ExceptionRecord;
-
-  // Exception Handler
 
   return EXCEPTION_EXECUTE_HANDLER;
 }
@@ -103,7 +97,7 @@ TResult CTSearch<T>::Searcher(const T Address, const T Size, const TPattern& pat
     for (T i = 0; i < Size - z; i++)
     {
       cout = 0;
-      for (ce::uint j = 0; j < z; j++)
+      for (vu::uint j = 0; j < z; j++)
       {
         auto e = pattern.at(j);
         if (e.first)
@@ -131,33 +125,31 @@ TResult CTSearch<T>::Searcher(const T Address, const T Size, const TPattern& pat
 template <typename T>
 void CTSearch<T>::ThreadBody(std::shared_ptr<TThreadData> pData)
 {
-  /* ce::ceMsgA(CE_FUNCTION_NAME); */
+  /* vu::ceMsgA(CE_FUNCTION_NAME); */
 
   std::stringstream ss;
   ss << std::hex << std::setw(4) << std::setfill('0') << std::uppercase << std::this_thread::get_id();
-  ce::ceMsgA("T[%s] : Running <%p : %08X>", ss.str().c_str(), (void*)pData->Address, pData->Size);
-
-  Sleep(500); /* Test concurrent threads */
+  vu::MsgA("T[%s] : Running <%p : %08X>", ss.str().c_str(), (void*)pData->Address, pData->Size);
 
   { /* Update the shared data inside this block */
     std::lock_guard<std::mutex> LG(*(pData->pMutex));
     if (CTSearch<T>::Result.first)
     {
-      ce::ceMsgA("T[%s] : Aborted", ss.str().c_str());
+      vu::MsgA("T[%s] : Aborted", ss.str().c_str());
       return;
     }
   }
 
   auto result = CTSearch<T>::Searcher(pData->Address, pData->Size, pData->Pattern);
   std::string s("");
-  if (result.first) s += ce::ceFormatA(" -> Found at %p", (void*)result.second);
+  if (result.first) s += vu::FormatA(" -> Found at %p", (void*)result.second);
 
   { /* Update the shared data inside this block */
     std::lock_guard<std::mutex> LG(*(pData->pMutex));
     if (result.first) CTSearch<T>::Result = result;
   }
 
-  ce::ceMsgA("T[%s] : Completed%s", ss.str().c_str(), s.c_str());
+  vu::MsgA("T[%s] : Completed%s", ss.str().c_str(), s.c_str());
 }
 
 template <typename T>
@@ -166,7 +158,7 @@ void CTSearch<T>::ExecThreadGroup(
   const TThreadGroupConfig* pTGC
 )
 {
-  ce::ceMsgA(CE_FUNCTION_NAME);
+  vu::MsgA(VU_FUNC_NAME);
 
   if ((m_AvaThread == 0) || (pTGC == nullptr || pTGC->NumberOfThread == 0)) return;
 
@@ -202,7 +194,7 @@ void CTSearch<T>::ExecThreadGroup(
 template <typename T>
 bool CTSearch<T>::Search(const std::string& pattern)
 {
-  ce::ceMsgA(CE_FUNCTION_NAME);
+  vu::MsgA(VU_FUNC_NAME);
 
   CTSearch<T>::Result = std::make_pair(false, 0);
 
@@ -237,12 +229,12 @@ const TPattern CTSearch<T>::ToPattern(const std::string& pattern)
 {
   TPattern M;
 
-  auto l = ce::ceSplitStringA(pattern, " ");
+  auto l = vu::SplitStringA(pattern, " ");
   for (auto& e: l)
   {
     if (e.length() == 2 && isxdigit(e[0]) && isxdigit(e[1]))
     {
-      auto v = (ce::uchar)strtoul(e.c_str(), nullptr, 16);
+      auto v = (vu::uchar)strtoul(e.c_str(), nullptr, 16);
       M.push_back(std::make_pair(true, v));
     }
     else
@@ -260,7 +252,7 @@ const TResult CTSearch<T>::SearchPattern(const std::string& pattern)
   TResult failed = std::make_pair(false, 0);
 
   auto s = pattern;
-  s = ce::ceTrimStringA(s);
+  s = vu::TrimStringA(s);
   if (s.empty()) return failed;
   
   if (!this->Search(s)) return failed;
@@ -273,8 +265,8 @@ const TResult CTSearch<T>::SearchPattern(const std::wstring& pattern)
 {
   TResult failed = std::make_pair(false, 0);
 
-  auto s = ce::ceToStringA(pattern);
-  s = ce::ceTrimStringA(s);
+  auto s = vu::ToStringA(pattern);
+  s = vu::TrimStringA(s);
   if (s.empty()) return failed;
 
   if (!this->Search(s)) return failed;
